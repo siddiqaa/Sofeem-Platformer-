@@ -170,6 +170,42 @@
             logger('Verified that joystick is overlayed nicely and centered (absolute, bottom-4, left-1/2, -translate-x-1/2).');
         });
 
+        addTest('Verify Landscape Mobile Responsive Scaling', 'dom', async (sandboxWindow, logger) => {
+            const iframe = document.getElementById('game-sandbox');
+            const joystick = sandboxWindow.document.getElementById('joystick-base');
+            if (!joystick) throw new Error('#joystick-base element is missing.');
+
+            logger('Simulating mobile landscape view by resizing sandbox to 640x320...');
+            iframe.style.width = '640px';
+            iframe.style.height = '320px';
+            
+            // Dispatch resize events so Tailwind media queries and Phaser re-render
+            sandboxWindow.dispatchEvent(new Event('resize'));
+            
+            // Wait for styles and browser layouts to settle
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            const computedStyle = sandboxWindow.getComputedStyle(joystick);
+            const heightPx = parseFloat(computedStyle.height);
+            const widthPx = parseFloat(computedStyle.width);
+
+            logger(`Simulated viewport dimensions: 640x320. Joystick element dimensions: ${widthPx}px x ${heightPx}px.`);
+
+            // landscape:w-20 is 5rem (80px)
+            if (widthPx > 100) {
+                throw new Error(`Landscape scaling failed: expected joystick to scale down under landscape mode (got ${widthPx}px width).`);
+            }
+            
+            logger('Successfully verified that joystick scales down correctly on landscape mobile orientations (using landscape:w-20 rule).');
+
+            // Restore defaults
+            logger('Restoring default sandbox dimensions to 1024x768...');
+            iframe.style.width = '1024px';
+            iframe.style.height = '768px';
+            sandboxWindow.dispatchEvent(new Event('resize'));
+            await new Promise(resolve => setTimeout(resolve, 200));
+        });
+
         // Suite 2: Game Mechanics and State initialization
         addTest('Verify Phaser Game Engine Integration', 'mechanics', async (sandboxWindow, logger) => {
             if (!sandboxWindow.Phaser) {
