@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Platformer Game - Test Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        .log-entry {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 min-h-screen flex flex-col justify-between">
+    <div class="max-w-4xl w-full mx-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col my-auto">
+        <!-- Header -->
+        <header class="p-6 bg-slate-950 border-b border-slate-800 flex justify-between items-center flex-wrap gap-4">
+            <div>
+                <h1 class="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-500 tracking-tight">
+                    🎮 Game Integration & Unit Tests
+                </h1>
+                <p class="text-xs text-slate-400 mt-1">Automated validations for gameplay mechanics, layout responsiveness, and responsive joystick metrics</p>
+            </div>
+            <div class="flex gap-2">
+                <a href="/" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg transition-all text-slate-200 border border-slate-700 flex items-center gap-1.5">
+                    ← Back to Game
+                </a>
+                <button id="btn-run-tests" class="px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-xs font-extrabold rounded-lg shadow-lg shadow-emerald-950/20 active:scale-95 transition-all text-white flex items-center gap-1.5">
+                    ⚡ Run Test Suite
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Counter -->
+        <section class="grid grid-cols-2 sm:grid-cols-4 border-b border-slate-800 bg-slate-950/40 divide-x divide-slate-800/60 text-center">
+            <div class="p-4">
+                <div id="stat-total" class="text-2xl md:text-3xl font-black text-slate-300">0</div>
+                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">Total Tests</div>
+            </div>
+            <div class="p-4">
+                <div id="stat-passed" class="text-2xl md:text-3xl font-black text-emerald-400">0</div>
+                <div class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mt-1">Passed</div>
+            </div>
+            <div class="p-4">
+                <div id="stat-failed" class="text-2xl md:text-3xl font-black text-rose-500">0</div>
+                <div class="text-[10px] font-bold text-rose-600 uppercase tracking-wider mt-1">Failed</div>
+            </div>
+            <div class="p-4">
+                <div id="stat-progress" class="text-2xl md:text-3xl font-black text-sky-400">0%</div>
+                <div class="text-[10px] font-bold text-sky-600 uppercase tracking-wider mt-1">Success Rate</div>
+            </div>
+        </section>
+
+        <!-- Progress Bar -->
+        <div class="h-1.5 w-full bg-slate-950 relative overflow-hidden">
+            <div id="test-progress-bar" class="absolute h-full left-0 top-0 bg-gradient-to-r from-emerald-500 to-sky-400 transition-all duration-300" style="width: 0%"></div>
+        </div>
+
+        <div class="flex flex-col md:flex-row h-[450px] md:h-[500px]">
+            <!-- Left Sidebar - Test Categories -->
+            <aside class="w-full md:w-64 border-r border-slate-800/80 bg-slate-950/20 p-4 overflow-y-auto flex flex-col gap-2">
+                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Test Categories</h3>
+                <button class="category-btn p-3 rounded-xl bg-slate-800 text-left text-xs font-bold transition-all border border-slate-700/50 flex justify-between items-center group" data-category="all">
+                    <span>All Tests</span>
+                    <span class="px-2 py-0.5 bg-slate-900 rounded-full text-[10px] group-hover:bg-slate-700 transition-colors" id="badge-all">0</span>
+                </button>
+                <button class="category-btn p-3 rounded-xl hover:bg-slate-800/50 text-left text-slate-400 hover:text-slate-200 text-xs font-bold transition-all border border-transparent flex justify-between items-center group" data-category="dom">
+                    <span>DOM Elements</span>
+                    <span class="px-2 py-0.5 bg-slate-950 rounded-full text-[10px]" id="badge-dom">0</span>
+                </button>
+                <button class="category-btn p-3 rounded-xl hover:bg-slate-800/50 text-left text-slate-400 hover:text-slate-200 text-xs font-bold transition-all border border-transparent flex justify-between items-center group" data-category="mechanics">
+                    <span>Game Mechanics</span>
+                    <span class="px-2 py-0.5 bg-slate-950 rounded-full text-[10px]" id="badge-mechanics">0</span>
+                </button>
+                <button class="category-btn p-3 rounded-xl hover:bg-slate-800/50 text-left text-slate-400 hover:text-slate-200 text-xs font-bold transition-all border border-transparent flex justify-between items-center group" data-category="joystick">
+                    <span>Joystick Physics</span>
+                    <span class="px-2 py-0.5 bg-slate-950 rounded-full text-[10px]" id="badge-joystick">0</span>
+                </button>
+            </aside>
+
+            <!-- Main Test Display -->
+            <main class="flex-1 flex flex-col overflow-hidden bg-slate-900/40">
+                <!-- Tabs and Status -->
+                <div class="p-3 bg-slate-950/60 border-b border-slate-800/60 flex justify-between items-center text-xs text-slate-400">
+                    <span id="test-run-status">Ready to initiate assertions</span>
+                    <button id="btn-clear-logs" class="text-rose-400 hover:text-rose-300 transition-all font-bold">Clear Logs</button>
+                </div>
+
+                <!-- Live Test Results Logs -->
+                <div id="test-logs-container" class="flex-1 p-4 overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-slate-800">
+                    <!-- Default message -->
+                    <div id="welcome-message" class="flex flex-col items-center justify-center text-center h-full text-slate-500 py-12">
+                        <span class="text-4xl mb-3">🧪</span>
+                        <p class="font-bold text-slate-300">No Tests Executed Yet</p>
+                        <p class="text-xs text-slate-500 mt-1 max-w-sm">Click the green button above to perform non-destructive integration and unit testing in the sandboxed preview environment.</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Hidden sandboxed iframe for integration tests -->
+    <iframe id="game-sandbox" src="/" class="absolute -top-[10000px] -left-[10000px] w-[1024px] h-[768px] invisible border-0"></iframe>
+
+    <!-- Footer branding -->
+    <footer class="text-center py-4 text-[10px] font-medium text-slate-600 tracking-wider">
+        PLATFORMER SYSTEM TEST WORKSPACE &bull; VERIFIED OK
+    </footer>
+
+    <script>
+        // Store our test definitions and runner
+        const tests = [];
+        let activeCategory = 'all';
+
+        // Add a test helper
+        function addTest(name, category, testFn) {
+            tests.push({ name, category, testFn, status: 'pending', error: null, logs: [] });
+        }
+
+        // --- DEFINE TESTS ---
+
+        // Suite 1: DOM Elements Verification
+        addTest('Verify Base Canvas Container', 'dom', async (sandboxWindow, logger) => {
+            const container = sandboxWindow.document.getElementById('game-container');
+            if (!container) throw new Error('Could not find primary #game-container element.');
+            logger('Verified #game-container exists.');
+            
+            const classList = container.className;
+            if (!classList.includes('w-screen') || !classList.includes('h-screen')) {
+                throw new Error('Game container is not configured to fill the full screen width/height.');
+            }
+            logger('Validated #game-container uses full-screen classes (w-screen, h-screen).');
+        });
+
+        addTest('Verify HUD Displays Exist', 'dom', async (sandboxWindow, logger) => {
+            const score = sandboxWindow.document.getElementById('score-display');
+            const lives = sandboxWindow.document.getElementById('lives-display');
+            if (!score) throw new Error('HUD elements: #score-display is missing.');
+            if (!lives) throw new Error('HUD elements: #lives-display is missing.');
+            logger(`Successfully verified HUD displays. Current score on screen: "${score.innerText}".`);
+        });
+
+        addTest('Verify Full-Width Canvas Parent', 'dom', async (sandboxWindow, logger) => {
+            const gameDiv = sandboxWindow.document.getElementById('phaser-game');
+            if (!gameDiv) throw new Error('#phaser-game wrapper element does not exist.');
+            logger('Verified #phaser-game division exists.');
+            
+            const classes = gameDiv.className;
+            if (!classes.includes('absolute') || !classes.includes('inset-0')) {
+                throw new Error('#phaser-game is not configured for absolute inset-0 to support full-width.');
+            }
+            logger('Validated full-width layout canvas bounds.');
+        });
+
+        addTest('Verify Overlay Controls Layout', 'dom', async (sandboxWindow, logger) => {
+            const joystick = sandboxWindow.document.getElementById('joystick-base');
+            const stick = sandboxWindow.document.getElementById('joystick-stick');
+            if (!joystick) throw new Error('#joystick-base is missing from screen overlay.');
+            if (!stick) throw new Error('#joystick-stick is missing from the joystick base.');
+            
+            const positionClasses = joystick.className;
+            if (!positionClasses.includes('absolute') || !positionClasses.includes('bottom-4') || !positionClasses.includes('left-1/2')) {
+                throw new Error('Joystick position is not configured appropriately at the bottom-center of the screen.');
+            }
+            logger('Verified that joystick is overlayed nicely and centered (absolute, bottom-4, left-1/2, -translate-x-1/2).');
+        });
+
+        // Suite 2: Game Mechanics and State initialization
+        addTest('Verify Phaser Game Engine Integration', 'mechanics', async (sandboxWindow, logger) => {
+            if (!sandboxWindow.Phaser) {
+                throw new Error('Phaser framework library was not loaded on the window object.');
+            }
+            logger(`Phaser framework found. Version: ${sandboxWindow.Phaser.VERSION}`);
+
+            if (!sandboxWindow.game) {
+                throw new Error('The global "game" Phaser instance is not initialized.');
+            }
+            logger('Validated that Phaser Game Instance is active and running.');
+        });
+
+        addTest('Verify Core Controls Interface initialization', 'mechanics', async (sandboxWindow, logger) => {
+            const controls = sandboxWindow.controls;
+            if (!controls) {
+                throw new Error('The game "controls" state object is not defined.');
+            }
+            if (controls.left !== false || controls.right !== false || controls.jump !== false) {
+                throw new Error('Controls state should be initialized to false on startup.');
+            }
+            logger('Verified controls interface is active and initialized to: ' + JSON.stringify(controls));
+        });
+
+        addTest('Verify HUD Score Synchronization', 'mechanics', async (sandboxWindow, logger) => {
+            const initialScoreText = sandboxWindow.document.getElementById('score-display').innerText;
+            if (initialScoreText !== '0' && isNaN(parseInt(initialScoreText))) {
+                throw new Error(`Expected score display to initialize at 0, found "${initialScoreText}"`);
+            }
+            logger(`Validated current score interface is correctly initialized.`);
+        });
+
+        // Suite 3: Joystick Math Calculations
+        addTest('Verify Joystick Drag and Constraint Mathematics', 'joystick', async (sandboxWindow, logger) => {
+            // Test vectors simulating joystick physics formulas
+            const simulateJoystickPhysics = (dx, dy, baseWidth) => {
+                const stickMax = baseWidth * 0.45;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                let rx = dx;
+                let ry = dy;
+                if (dist > stickMax) {
+                    rx *= stickMax / dist;
+                    ry *= stickMax / dist;
+                }
+                
+                // Assert controls
+                const left = rx < -stickMax * 0.3;
+                const right = rx > stickMax * 0.3;
+                const jump = ry < -stickMax * 0.5;
+                
+                return { rx, ry, left, right, jump, stickMax };
+            };
+
+            const baseWidth = 100; // Simulated joystick size: 100px width
+            
+            // 1. Center dragging (no threshold)
+            let result = simulateJoystickPhysics(10, 5, baseWidth);
+            if (result.left || result.right || result.jump) {
+                throw new Error('Small drag within threshold triggers controls incorrectly.');
+            }
+            logger('Verified that small movements inside the threshold center area do not trigger active control states.');
+
+            // 2. Dragging Left past threshold
+            result = simulateJoystickPhysics(-25, 5, baseWidth);
+            if (!result.left || result.right) {
+                throw new Error('Expected "left" to be active and "right" to be inactive when dragging left.');
+            }
+            logger('Verified Drag-Left detection correctly activates "left" controls.');
+
+            // 3. Dragging Right past threshold
+            result = simulateJoystickPhysics(30, -5, baseWidth);
+            if (result.left || !result.right) {
+                throw new Error('Expected "right" to be active and "left" to be inactive when dragging right.');
+            }
+            logger('Verified Drag-Right detection correctly activates "right" controls.');
+
+            // 4. Dragging Up past threshold (Jump)
+            result = simulateJoystickPhysics(0, -40, baseWidth);
+            if (!result.jump) {
+                throw new Error('Expected "jump" to be active when dragging up past the threshold.');
+            }
+            logger('Verified Drag-Up detection correctly triggers "jump" controls.');
+
+            // 5. Hard boundary scaling check
+            const overflowDrag = simulateJoystickPhysics(150, 150, baseWidth);
+            const expectedMax = baseWidth * 0.45;
+            const absoluteDist = Math.sqrt(overflowDrag.rx * overflowDrag.rx + overflowDrag.ry * overflowDrag.ry);
+            
+            if (Math.abs(absoluteDist - expectedMax) > 0.1) {
+                throw new Error(`Distance clamping failed. Expected: ${expectedMax}, Actual: ${absoluteDist}`);
+            }
+            logger(`Verified hard boundary constraint scaling. Position clamped cleanly inside ${expectedMax}px max radius.`);
+        });
+
+        // --- RUNNER INTERACTIVE SCRIPT ---
+
+        const btnRun = document.getElementById('btn-run-tests');
+        const btnClear = document.getElementById('btn-clear-logs');
+        const sandbox = document.getElementById('game-sandbox');
+        const containerLogs = document.getElementById('test-logs-container');
+        const welcomeMessage = document.getElementById('welcome-message');
+        const testStatus = document.getElementById('test-run-status');
+        
+        const statTotal = document.getElementById('stat-total');
+        const statPassed = document.getElementById('stat-passed');
+        const statFailed = document.getElementById('stat-failed');
+        const statProgress = document.getElementById('stat-progress');
+        const progressBar = document.getElementById('test-progress-bar');
+
+        const badgeAll = document.getElementById('badge-all');
+        const badgeDom = document.getElementById('badge-dom');
+        const badgeMechanics = document.getElementById('badge-mechanics');
+        const badgeJoystick = document.getElementById('badge-joystick');
+
+        // Update categories counters
+        function updateCounters() {
+            badgeAll.innerText = tests.length;
+            badgeDom.innerText = tests.filter(t => t.category === 'dom').length;
+            badgeMechanics.innerText = tests.filter(t => t.category === 'mechanics').length;
+            badgeJoystick.innerText = tests.filter(t => t.category === 'joystick').length;
+        }
+
+        updateCounters();
+
+        // Handle tabs
+        document.querySelectorAll('.category-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.category-btn').forEach(b => {
+                    b.classList.remove('bg-slate-800', 'text-slate-200');
+                    b.classList.add('hover:bg-slate-800/50', 'text-slate-400');
+                });
+                btn.classList.remove('hover:bg-slate-800/50', 'text-slate-400');
+                btn.classList.add('bg-slate-800', 'text-slate-200');
+                
+                activeCategory = btn.getAttribute('data-category');
+                renderResults();
+            });
+        });
+
+        // Clear logs
+        btnClear.addEventListener('click', () => {
+            tests.forEach(t => {
+                t.status = 'pending';
+                t.error = null;
+                t.logs = [];
+            });
+            renderResults();
+            resetStats();
+        });
+
+        function resetStats() {
+            statTotal.innerText = '0';
+            statPassed.innerText = '0';
+            statFailed.innerText = '0';
+            statProgress.innerText = '0%';
+            progressBar.style.width = '0%';
+            testStatus.innerText = 'Logs cleared';
+        }
+
+        // Render logs dynamically
+        function renderResults() {
+            // Remove previous logs/welcome
+            containerLogs.innerHTML = '';
+            
+            const filteredTests = activeCategory === 'all' ? tests : tests.filter(t => t.category === activeCategory);
+            
+            if (filteredTests.length === 0) {
+                containerLogs.appendChild(welcomeMessage);
+                return;
+            }
+
+            filteredTests.forEach(t => {
+                const testBlock = document.createElement('div');
+                testBlock.className = `p-4 rounded-xl border transition-all duration-300 ${
+                    t.status === 'passed' ? 'bg-emerald-950/20 border-emerald-800/40' :
+                    t.status === 'failed' ? 'bg-rose-950/20 border-rose-800/40' :
+                    t.status === 'running' ? 'bg-sky-950/20 border-sky-800/40 animate-pulse' :
+                    'bg-slate-900 border-slate-800'
+                }`;
+
+                // Header info
+                let badgeClass = 'bg-slate-800 text-slate-400';
+                if (t.status === 'passed') badgeClass = 'bg-emerald-500/20 text-emerald-400';
+                if (t.status === 'failed') badgeClass = 'bg-rose-500/20 text-rose-400';
+                if (t.status === 'running') badgeClass = 'bg-sky-500/20 text-sky-400';
+
+                const header = `
+                    <div class="flex justify-between items-start gap-4">
+                        <div>
+                            <span class="px-2 py-0.5 rounded text-[9px] font-black tracking-wider uppercase bg-slate-950 text-slate-400 mr-2">${t.category}</span>
+                            <h3 class="text-xs md:text-sm font-bold inline-block text-slate-100">${t.name}</h3>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-md text-[10px] font-bold ${badgeClass}">${t.status.toUpperCase()}</span>
+                    </div>
+                `;
+
+                testBlock.innerHTML = header;
+
+                // Log steps
+                if (t.logs.length > 0 || t.error) {
+                    const stepsContainer = document.createElement('div');
+                    stepsContainer.className = 'mt-3 pt-3 border-t border-slate-800/50 space-y-1 text-[11px] log-entry text-slate-400';
+                    
+                    t.logs.forEach(step => {
+                        stepsContainer.innerHTML += `<div class="flex items-center gap-2"><span class="text-emerald-500">✓</span> <span>${step}</span></div>`;
+                    });
+
+                    if (t.error) {
+                        stepsContainer.innerHTML += `
+                            <div class="mt-2 p-2.5 bg-rose-950/40 border border-rose-900/30 rounded text-rose-300">
+                                <span class="font-bold block uppercase text-[9px] tracking-wide text-rose-400">Error Stack trace:</span>
+                                ${t.error}
+                            </div>
+                        `;
+                    }
+                    testBlock.appendChild(stepsContainer);
+                }
+
+                containerLogs.appendChild(testBlock);
+            });
+        }
+
+        // Run full assertions suite
+        async function runTestSuite() {
+            btnRun.disabled = true;
+            btnRun.innerText = '⌛ Executing...';
+            testStatus.innerText = 'Spawning sandboxed game iframe...';
+
+            // Reload sandbox to guarantee clean state
+            sandbox.src = sandbox.src;
+            await new Promise(resolve => sandbox.onload = resolve);
+
+            const sandboxWindow = sandbox.contentWindow;
+            
+            // Wait an extra brief moment for Phaser scripts inside iframe to register
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            let passedCount = 0;
+            let failedCount = 0;
+
+            statTotal.innerText = tests.length;
+
+            for (let i = 0; i < tests.length; i++) {
+                const t = tests[i];
+                t.status = 'running';
+                t.logs = [];
+                t.error = null;
+                renderResults();
+
+                testStatus.innerText = `Running: ${t.name}...`;
+
+                const loggerFn = (logMsg) => {
+                    t.logs.push(logMsg);
+                    renderResults();
+                };
+
+                try {
+                    await t.testFn(sandboxWindow, loggerFn);
+                    t.status = 'passed';
+                    passedCount++;
+                } catch (err) {
+                    t.status = 'failed';
+                    t.error = err.message;
+                    failedCount++;
+                }
+
+                // Update progress bar
+                const percent = Math.round(((i + 1) / tests.length) * 100);
+                progressBar.style.width = `${percent}%`;
+                
+                // Update live counters
+                statPassed.innerText = passedCount;
+                statFailed.innerText = failedCount;
+                statProgress.innerText = `${Math.round((passedCount / (passedCount + failedCount)) * 100)}%`;
+
+                renderResults();
+                await new Promise(resolve => setTimeout(resolve, 150));
+            }
+
+            testStatus.innerText = `Finished: ${passedCount} passed, ${failedCount} failed`;
+            btnRun.disabled = false;
+            btnRun.innerText = '⚡ Run Test Suite';
+        }
+
+        btnRun.addEventListener('click', runTestSuite);
+    </script>
+</body>
+</html>

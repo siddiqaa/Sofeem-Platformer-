@@ -3,142 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Platformer - Vibrant Palette</title>
-    <!-- Phaser Engine -->
+    <title>Platformer Game</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
-            background-color: #bae6fd; 
-            overflow: hidden; 
-            height: 100vh; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            font-family: sans-serif;
-            /* Prevent mobile zoom and selection */
-            touch-action: none;
-            -webkit-user-select: none;
-            user-select: none;
-            -webkit-touch-callout: none;
+        body {
+            margin: 0; padding: 0; overflow: hidden; height: 100vh; width: 100vw;
+            display: flex; align-items: center; justify-content: center;
+            background-color: #bae6fd; font-family: sans-serif;
+            touch-action: none; -webkit-user-select: none; user-select: none;
         }
-        canvas { border-radius: 12px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
     </style>
 </head>
 <body>
-    <div id="game-container" class="flex flex-col h-full w-full md:max-w-[1024px] md:max-h-[768px] bg-sky-300 font-sans overflow-hidden shadow-2xl relative md:rounded-xl">
+    <div id="game-container" class="flex flex-col h-screen w-screen bg-sky-300 font-sans overflow-hidden relative">
         <!-- HUD / Top Bar -->
         <header class="flex justify-between items-center p-3 md:p-6 landscape:p-1.5 bg-transparent relative z-20 transition-all">
-            <div class="flex gap-2 md:gap-4 landscape:gap-2">
-                <div class="bg-white rounded-full px-3 py-1 md:px-6 md:py-2 landscape:px-3 landscape:py-0.5 shadow-lg border-2 md:border-4 border-yellow-400 flex items-center gap-2 md:gap-3 landscape:gap-1.5">
-                    <span class="text-lg md:text-2xl landscape:text-sm">⭐</span>
-                    <span id="score-display" class="text-lg md:text-2xl landscape:text-sm font-black text-blue-900 tracking-tight">0</span>
+            <div class="flex gap-2">
+                <div class="bg-white rounded-full px-3 py-1 landscape:px-3 landscape:py-0.5 shadow-lg border-2 md:border-4 border-yellow-400 flex items-center gap-1.5">
+                    <span class="text-base md:text-xl">⭐</span>
+                    <span id="score-display" class="text-base md:text-xl font-black text-blue-900 tracking-tight">0</span>
                 </div>
-                <div class="bg-white rounded-full px-3 py-1 md:px-6 md:py-2 landscape:px-3 landscape:py-0.5 shadow-lg border-2 md:border-4 border-red-400 flex items-center gap-1 md:gap-2 landscape:gap-1.5">
-                    <span class="text-lg md:text-2xl landscape:text-sm">❤️</span>
-                    <span id="lives-display" class="text-lg md:text-2xl landscape:text-sm font-black text-blue-900 tracking-tight">×3</span>
+                <div class="bg-white rounded-full px-3 py-1 landscape:px-3 landscape:py-0.5 shadow-lg border-2 md:border-4 border-red-400 flex items-center gap-1.5">
+                    <span class="text-base md:text-xl">❤️</span>
+                    <span id="lives-display" class="text-base md:text-xl font-black text-blue-900 tracking-tight">×3</span>
                 </div>
             </div>
-            <div class="bg-white/90 rounded-xl md:rounded-2xl px-4 py-1 md:px-8 md:py-3 landscape:px-4 landscape:py-0.5 shadow-xl border-2 md:border-4 border-white flex flex-col items-center min-w-[120px] md:min-w-[200px] landscape:min-w-[100px]">
-                <span class="text-[8px] md:text-xs landscape:text-[7px] font-bold text-sky-600 uppercase tracking-widest mb-0 md:mb-1">Level 01</span>
-                <h1 class="text-sm md:text-2xl landscape:text-sm font-black text-blue-900 truncate max-w-[100px] md:max-w-none">Vibrant Plains</h1>
-            </div>
-            <div class="hidden sm:flex gap-2 md:gap-4 landscape:gap-2">
-                <div class="bg-white rounded-full p-2 md:p-4 landscape:p-1.5 shadow-lg border-2 md:border-4 border-indigo-400 hover:scale-105 cursor-pointer transition-transform">
-                    <svg class="w-4 h-4 md:w-8 md:h-8 landscape:w-4 landscape:h-4 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-                    </svg>
-                </div>
-                <div class="bg-white rounded-full p-2 md:p-4 landscape:p-1.5 shadow-lg border-2 md:border-4 border-pink-400 hover:scale-105 cursor-pointer transition-transform">
-                    <svg class="w-4 h-4 md:w-8 md:h-8 landscape:w-4 landscape:h-4 text-pink-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
-                    </svg>
-                </div>
+            <div class="bg-white/90 rounded-xl px-4 py-1 landscape:px-4 landscape:py-0.5 shadow-xl border-2 md:border-4 border-white flex flex-col items-center min-w-[100px]">
+                <span class="text-[8px] md:text-xs landscape:text-[7px] font-bold text-sky-600 uppercase tracking-widest">Level 01</span>
+                <h1 class="text-xs md:text-lg font-black text-blue-900 truncate max-w-[120px]">Vibrant Plains</h1>
             </div>
         </header>
 
         <!-- Game World Area -->
         <main class="flex-1 relative bg-gradient-to-b from-sky-300 via-sky-200 to-sky-100 overflow-hidden">
-            <!-- Background Clouds -->
-            <div class="absolute top-10 md:top-20 left-5 md:left-10 w-24 md:w-48 h-10 md:h-20 bg-white rounded-full opacity-60 blur-md"></div>
-            <div class="absolute top-20 md:top-40 right-10 md:right-20 w-32 md:w-64 h-12 md:h-24 bg-white rounded-full opacity-50 blur-lg"></div>
-            <div class="absolute top-5 md:top-10 right-20 md:right-40 w-16 md:w-32 h-8 md:h-16 bg-white rounded-full opacity-70 blur-sm"></div>
-
             <div id="phaser-game" class="absolute inset-0 z-10"></div>
+
+            <!-- Overlaid Joystick Controls -->
+            <div id="joystick-base" class="absolute bottom-4 left-1/2 -translate-x-1/2 w-24 h-24 md:w-32 md:h-32 landscape:w-20 landscape:h-20 bg-sky-400/25 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center border-4 border-white/50 touch-none z-30 transition-all">
+                <div id="joystick-stick" class="w-12 h-12 md:w-18 md:h-18 landscape:w-10 landscape:h-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full shadow-2xl border-b-4 md:border-b-8 border-orange-800 flex items-center justify-center pointer-events-none">
+                    <div class="w-4 h-4 md:w-6 md:h-6 landscape:w-2 landscape:h-2 bg-white rounded-full opacity-20"></div>
+                </div>
+            </div>
         </main>
-
-        <!-- Controls / Bottom Bar -->
-        <footer class="h-24 md:h-40 landscape:h-14 bg-white/30 backdrop-blur-md p-4 md:p-8 landscape:p-1 flex justify-center items-center border-t-2 md:border-t-4 border-white/40 z-20 relative transition-all">
-            <!-- Left Info (Hidden on small mobile) -->
-            <div class="absolute left-4 md:left-8 hidden sm:flex gap-3 md:gap-6 items-center bg-white/40 rounded-xl md:rounded-3xl px-3 md:px-8 h-12 md:h-20 landscape:h-10 shadow-sm border border-white/20">
-                <div class="text-center">
-                    <div class="text-[8px] md:text-[10px] font-bold text-sky-700 uppercase tracking-tighter">Level</div>
-                    <div class="text-sm md:text-xl landscape:text-[10px] font-black text-blue-900">01</div>
-                </div>
-            </div>
-
-            <!-- Vibrant Joystick Controls -->
-            <div id="joystick-base" class="w-24 h-24 md:w-36 md:h-36 landscape:w-12 landscape:h-12 bg-sky-400/20 rounded-full shadow-inner flex items-center justify-center relative border-4 border-white/40 touch-none">
-                <div id="joystick-stick" class="w-12 h-12 md:w-20 md:h-20 landscape:w-6 landscape:h-6 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full shadow-2xl border-b-4 md:border-b-8 border-orange-800 flex items-center justify-center cursor-pointer transition-transform duration-75 pointer-events-none">
-                    <div class="w-4 h-4 md:w-8 md:h-8 landscape:w-2 landscape:h-2 bg-white rounded-full opacity-20"></div>
-                </div>
-            </div>
-
-            <!-- Right Menu -->
-            <div class="absolute right-4 md:right-8 flex gap-3 md:gap-6 items-center bg-white/80 rounded-xl md:rounded-3xl px-3 md:px-8 h-12 md:h-20 landscape:h-10 shadow-xl transition-all">
-                <div class="text-center">
-                    <div class="text-[8px] md:text-[10px] landscape:text-[6px] font-bold text-gray-500 uppercase tracking-tighter">FPS</div>
-                    <div class="text-sm md:text-xl landscape:text-[10px] font-black text-blue-900">60</div>
-                </div>
-                <div class="h-4 md:h-8 landscape:h-3 w-px bg-gray-300"></div>
-                <div class="text-center">
-                    <div class="text-[8px] md:text-[10px] landscape:text-[6px] font-bold text-gray-500 uppercase tracking-tighter">Engine</div>
-                    <div class="text-sm md:text-xl landscape:text-[10px] font-black text-blue-900">PHASER</div>
-                </div>
-            </div>
-        </footer>
     </div>
 
     <script>
         const scoreDisplay = document.getElementById('score-display');
+        const livesDisplay = document.getElementById('lives-display');
         let currentScore = 0;
+        let lives = 3;
+        let isInvulnerable = false;
         const controls = { left: false, right: false, jump: false };
+        window.controls = controls;
 
         const config = {
             type: Phaser.AUTO,
-            width: 800,
-            height: 500,
             parent: 'phaser-game',
             transparent: true,
             scale: {
-                mode: Phaser.Scale.FIT,
+                mode: Phaser.Scale.RESIZE,
                 autoCenter: Phaser.Scale.CENTER_BOTH
             },
             physics: {
                 default: 'arcade',
-                arcade: {
-                    gravity: { x: 0, y: 600 },
-                    debug: false
-                }
+                arcade: { gravity: { y: 600 }, debug: false }
             },
-            scene: {
-                preload: preload,
-                create: create,
-                update: update
-            }
+            scene: { preload, create, update }
         };
 
         const game = new Phaser.Game(config);
-
-        let player;
-        let platforms;
-        let cursors;
-        let stars;
-        let monsters;
-        let gameOver = false;
+        window.game = game;
+        let player, platforms, cursors, stars, monsters, gameOver = false;
 
         function preload() {}
 
@@ -146,49 +82,48 @@
             gameOver = false;
             currentScore = 0;
             scoreDisplay.innerText = '0';
+            lives = 3;
+            livesDisplay.innerText = '×3';
+            isInvulnerable = false;
 
-            // Platforms
+            const { width, height } = this.scale;
+
             platforms = this.physics.add.staticGroup();
             
             // Ground
-            const ground = this.add.rectangle(400, 480, 800, 40, 0x22c55e);
+            const ground = this.add.rectangle(width / 2, height - 20, width, 40, 0x22c55e);
             this.physics.add.existing(ground, true);
             platforms.add(ground);
-            this.add.rectangle(400, 462, 800, 4, 0x16a34a);
+            this.add.rectangle(width / 2, height - 38, width, 4, 0x16a34a);
 
-            // Ledges
+            // Dynamic Ledges
             const ledges = [
-                { x: 400, y: 460, w: 800, h: 40, isGround: true }, // Logic for ground monster
-                { x: 600, y: 350, w: 300, h: 20, color: 0xfb923c },
-                { x: 150, y: 250, w: 250, h: 20, color: 0xf472b6 },
-                { x: 700, y: 150, w: 200, h: 20, color: 0xc084fc },
-                { x: 400, y: 120, w: 150, h: 20, color: 0x60a5fa }
+                { x: width / 2, y: height - 40, w: width, h: 40, isGround: true },
+                { x: width * 0.75, y: height - 150, w: Math.max(200, width * 0.3), h: 20, color: 0xfb923c },
+                { x: width * 0.25, y: height - 250, w: Math.max(180, width * 0.25), h: 20, color: 0xf472b6 },
+                { x: width * 0.8, y: height - 340, w: Math.max(150, width * 0.2), h: 20, color: 0xc084fc },
+                { x: width * 0.45, y: height - 370, w: Math.max(120, width * 0.15), h: 20, color: 0x60a5fa }
             ];
 
-            const visualLedges = ledges.filter(l => !l.isGround);
-            visualLedges.forEach(l => {
+            ledges.filter(l => !l.isGround).forEach(l => {
                 const ledge = this.add.rectangle(l.x, l.y, l.w, l.h, l.color);
                 this.physics.add.existing(ledge, true);
                 platforms.add(ledge);
-                this.add.rectangle(l.x, l.y + 10, l.w, 4, 0x000000, 0.1);
+                this.add.rectangle(l.x, l.y + 5, l.w, 4, 0x000000, 0.1);
             });
 
-            // Player
+            // Player Setup
             const playerBodyVisual = this.add.rectangle(0, 0, 40, 40, 0xfacc15).setStrokeStyle(4, 0x1e3a8a);
             const eyeLeft = this.add.circle(-8, -5, 4, 0x1e3a8a);
             const eyeRight = this.add.circle(8, -5, 4, 0x1e3a8a);
             const blushLeft = this.add.circle(-12, 5, 3, 0xf472b6, 0.6);
             const blushRight = this.add.circle(12, 5, 3, 0xf472b6, 0.6);
             
-            player = this.add.container(100, 440, [playerBodyVisual, eyeLeft, eyeRight, blushLeft, blushRight]);
+            player = this.add.container(Math.min(100, width * 0.1), height - 70, [playerBodyVisual, eyeLeft, eyeRight, blushLeft, blushRight]);
             this.physics.add.existing(player);
-            const pBody = player.body;
-            pBody.setBounce(0.1);
-            pBody.setCollideWorldBounds(true);
-            pBody.setSize(40, 40);
-            pBody.setOffset(-20, -20); // Center the body on the container
+            player.body.setBounce(0.1).setCollideWorldBounds(true).setSize(40, 40).setOffset(-20, -20);
 
-            // Monsters
+            // Monsters Setup
             monsters = this.physics.add.group();
             ledges.forEach((l, index) => {
                 const mBodyVisual = this.add.rectangle(0, 0, 30, 30, 0xef4444).setStrokeStyle(3, 0x7f1d1d);
@@ -197,100 +132,93 @@
                 const pupilL = this.add.rectangle(-6, -2, 3, 3, 0x000000);
                 const pupilR = this.add.rectangle(6, -2, 3, 3, 0x000000);
                 
-                // Position monster so it sits exactly on the platform top
                 const platformTop = l.y - (l.h / 2);
                 const monster = this.add.container(l.x, platformTop - 15, [mBodyVisual, eyeL, eyeR, pupilL, pupilR]);
                 this.physics.add.existing(monster);
-                const body = monster.body;
-                body.setBounce(0);
-                body.setCollideWorldBounds(true);
-                body.setSize(30, 30);
-                body.setOffset(-15, -15); // Center body
-                body.setVelocityX(index % 2 === 0 ? 120 : -120);
+                monster.body.setBounce(0).setCollideWorldBounds(true).setSize(30, 30).setOffset(-15, -15).setVelocityX(index % 2 === 0 ? 120 : -120);
                 
                 monster.setData('minX', l.x - l.w / 2 + 15);
                 monster.setData('maxX', l.x + l.w / 2 - 15);
-                
                 monsters.add(monster);
             });
 
-            // Input
             cursors = this.input.keyboard.createCursorKeys();
 
-            // Stars
+            // Stars Setup
             stars = this.physics.add.group();
-            for (let i = 0; i < 10; i++) {
-                const x = 50 + (i * 75);
-                const star = this.add.star(x, 0, 5, 8, 16, 0xfde047).setStrokeStyle(2, 0xeab308);
+            const starCount = 10;
+            const spacing = width / (starCount + 1);
+            for (let i = 0; i < starCount; i++) {
+                const star = this.add.star(spacing * (i + 1), 0, 5, 8, 16, 0xfde047).setStrokeStyle(2, 0xeab308);
                 this.physics.add.existing(star);
-                const body = star.body;
-                body.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
-                body.setCollideWorldBounds(true);
+                star.body.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8)).setCollideWorldBounds(true);
                 stars.add(star);
             }
 
-            // Collisions
+            // Physics Colliders
             this.physics.add.collider(player, platforms);
             this.physics.add.collider(stars, platforms);
             this.physics.add.collider(monsters, platforms);
 
-            // Overlap with stars
             this.physics.add.overlap(player, stars, (p, s) => {
                 if (s.getData('collecting')) return;
                 s.setData('collecting', true);
-                
                 this.tweens.add({
-                    targets: s,
-                    scale: 0,
-                    alpha: 0,
-                    duration: 200,
+                    targets: s, scale: 0, alpha: 0, duration: 200,
                     onComplete: () => {
                         s.destroy();
                         currentScore += 10;
                         scoreDisplay.innerText = currentScore;
-
-                        if (stars.countActive(true) === 0) {
-                            endGame.call(this, 'YOU WIN!');
-                        }
+                        if (stars.countActive(true) === 0) endGame.call(this, 'YOU WIN!');
                     }
                 });
-            }, null, this);
+            });
 
-            // Collision with monsters
             this.physics.add.overlap(player, monsters, () => {
-                endGame.call(this, 'GAME OVER');
-            }, null, this);
+                if (isInvulnerable || gameOver) return;
+
+                lives--;
+                livesDisplay.innerText = '×' + lives;
+
+                if (lives <= 0) {
+                    endGame.call(this, 'GAME OVER');
+                } else {
+                    isInvulnerable = true;
+                    player.body.setVelocity(0, 0);
+                    player.setPosition(Math.min(100, width * 0.1), height - 70);
+
+                    this.tweens.add({
+                        targets: player,
+                        alpha: 0.2,
+                        duration: 100,
+                        yoyo: true,
+                        repeat: 9,
+                        onComplete: () => {
+                            player.alpha = 1;
+                            isInvulnerable = false;
+                        }
+                    });
+                }
+            });
         }
 
         function endGame(message) {
             gameOver = true;
             this.physics.pause();
-            
-            this.add.text(400, 250, message, { 
-                fontSize: '64px', 
-                color: '#1e3a8a',
-                fontStyle: '900'
-            }).setOrigin(0.5);
-            
-            this.add.text(400, 310, 'Click to Restart', { 
-                fontSize: '24px', 
-                color: '#1e3a8a',
-                fontStyle: 'bold'
-            }).setOrigin(0.5);
-            
-            this.input.once('pointerdown', () => {
-                this.scene.restart();
-            });
+            const { width, height } = this.scale;
+
+            this.add.text(width / 2, height / 2 - 30, message, { fontSize: '64px', color: '#1e3a8a', fontStyle: '900' }).setOrigin(0.5);
+            this.add.text(width / 2, height / 2 + 30, 'Click to Restart', { fontSize: '24px', color: '#1e3a8a', fontStyle: 'bold' }).setOrigin(0.5);
+            this.input.once('pointerdown', () => this.scene.restart());
         }
 
         function update() {
             if (gameOver || !player) return;
 
-            // Update Monsters Pacing
             if (monsters) {
                 monsters.children.iterate(m => {
                     if (!m.body) return true;
-                    const body = m.body;
+                    const { body } = m;
                     const minX = m.getData('minX');
                     const maxX = m.getData('maxX');
 
@@ -299,8 +227,6 @@
                     } else if (m.x >= maxX) {
                         body.setVelocityX(-Math.abs(body.velocity.x) || -120);
                     }
-                    
-                    // Ensure they keep moving if they get stuck
                     if (Math.abs(body.velocity.x) < 10) {
                         body.setVelocityX(m.x < (minX + maxX) / 2 ? 120 : -120);
                     }
@@ -308,29 +234,28 @@
                 });
             }
 
-            const body = player.body;
+            const { body } = player;
             const spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
             const isLeft = cursors.left.isDown || controls.left;
             const isRight = cursors.right.isDown || controls.right;
             const isJump = cursors.up.isDown || spaceKey.isDown || controls.jump;
 
             if (isLeft) {
-                body.setVelocityX(-250);
+                body.setVelocityX(-200);
             } else if (isRight) {
-                body.setVelocityX(250);
+                body.setVelocityX(200);
             } else {
                 body.setVelocityX(0);
             }
 
             if (isJump && body.touching.down) {
-                body.setVelocityY(-500);
+                body.setVelocityY(-520);
             }
         }
 
-        // Joystick Controls
+        // Joystick Event Listeners
         const joyBase = document.getElementById('joystick-base');
         const joyStick = document.getElementById('joystick-stick');
-
         let isDragging = false;
 
         const handleMove = (e) => {
@@ -339,13 +264,11 @@
             const rect = joyBase.getBoundingClientRect();
             const centerX = rect.left + rect.width / 2;
             const centerY = rect.top + rect.height / 2;
-            
-            // Max movement radius (approx 40% of base width)
             const stickMax = rect.width * 0.45;
             
             let dx = touch.clientX - centerX;
             let dy = touch.clientY - centerY;
-            const dist = Math.sqrt(dx*dx + dy*dy);
+            const dist = Math.sqrt(dx * dx + dy * dy);
             
             if (dist > stickMax) {
                 dx *= stickMax / dist;
@@ -354,8 +277,6 @@
             
             joyStick.style.transform = `translate(${dx}px, ${dy}px)`;
             
-            // Threshold for movement (Relative to stickMax)
-            // Left/Right: 30% of max radius, Jump: 50% of max radius
             controls.left = dx < -stickMax * 0.3;
             controls.right = dx > stickMax * 0.3;
             controls.jump = dy < -stickMax * 0.5;
@@ -363,10 +284,8 @@
 
         const stopDragging = () => {
             isDragging = false;
-            joyStick.style.transform = `translate(0, 0)`;
-            controls.left = false;
-            controls.right = false;
-            controls.jump = false;
+            joyStick.style.transform = 'translate(0, 0)';
+            controls.left = controls.right = controls.jump = false;
         };
 
         joyBase.addEventListener('mousedown', (e) => { isDragging = true; handleMove(e); });
