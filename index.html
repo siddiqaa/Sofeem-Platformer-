@@ -2,303 +2,404 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Platformer Game</title>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
-        body {
-            margin: 0; padding: 0; overflow: hidden; height: 100vh; width: 100vw;
-            display: flex; align-items: center; justify-content: center;
-            background-color: #bae6fd; font-family: sans-serif;
-            touch-action: none; -webkit-user-select: none; user-select: none;
+        body { margin: 0; overflow: hidden; background-color: #0f172a; touch-action: none; user-select: none; -webkit-user-select: none; }
+        #game-container { position: relative; width: 100vw; height: 100vh; outline: none; }
+        #phaser-game { position: absolute; inset: 0; z-index: 10; }
+        .hud-panel { position: absolute; z-index: 20; pointer-events: none; }
+        .interactive { pointer-events: auto; }
+        
+        /* Custom D-Pad styles */
+        .dpad-btn { 
+            width: 4rem; height: 4rem; 
+            background: rgba(255,255,255,0.1); 
+            backdrop-filter: blur(4px);
+            border: 2px solid rgba(255,255,255,0.2); 
+            border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            color: white; font-size: 1.5rem;
+            pointer-events: auto; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: background 0.1s;
         }
-        @media (orientation: landscape) and (max-height: 500px) {
-            #joystick-base { width: 5rem !important; height: 5rem !important; }
-            #joystick-stick { width: 3rem !important; height: 3rem !important; }
+        .dpad-btn:active, .dpad-btn.active { background: rgba(255,255,255,0.3); }
+        
+        @media (min-width: 768px) {
+            #dpad-container { display: none; } /* Hide on desktop assuming keyboard */
         }
     </style>
 </head>
 <body>
-    <div id="game-container" class="flex flex-col h-screen w-screen bg-sky-300 font-sans overflow-hidden relative">
-        <!-- HUD / Top Bar -->
-        <header class="flex justify-between items-center p-3 md:p-6 landscape:p-1.5 bg-transparent relative z-20 transition-all">
-            <div class="flex gap-2">
-                <div class="bg-white rounded-full px-3 py-1 landscape:px-3 landscape:py-0.5 shadow-lg border-2 md:border-4 border-yellow-400 flex items-center gap-1.5">
-                    <span class="text-base md:text-xl">⭐</span>
-                    <span id="score-display" class="text-base md:text-xl font-black text-blue-900 tracking-tight">0</span>
-                </div>
-                <div class="bg-white rounded-full px-3 py-1 landscape:px-3 landscape:py-0.5 shadow-lg border-2 md:border-4 border-red-400 flex items-center gap-1.5">
-                    <span class="text-base md:text-xl">❤️</span>
-                    <span id="lives-display" class="text-base md:text-xl font-black text-blue-900 tracking-tight">×3</span>
-                </div>
+    <div id="game-container" tabindex="0" class="w-screen h-screen">
+        <div id="phaser-game" class="w-full h-full"></div>
+        
+        <!-- HUD -->
+        <div class="hud-panel top-4 left-4 right-4 flex justify-between items-start">
+            <div class="flex gap-4 bg-slate-800/80 backdrop-blur px-6 py-3 rounded-2xl border border-slate-700 shadow-xl">
+                <div class="text-white font-bold text-xl md:text-2xl drop-shadow-md">Score: <span id="score-display" class="text-yellow-400">0</span></div>
+                <div class="text-slate-400 text-xl md:text-2xl">|</div>
+                <div class="text-white font-bold text-xl md:text-2xl drop-shadow-md">Lives: <span id="lives-display" class="text-red-400">3</span></div>
+                <div class="text-slate-400 text-xl md:text-2xl">|</div>
+                <div class="text-white font-bold text-xl md:text-2xl drop-shadow-md">Level: <span id="level-display" class="text-blue-400">1</span></div>
             </div>
-            <div class="bg-white/90 rounded-xl px-4 py-1 landscape:px-4 landscape:py-0.5 shadow-xl border-2 md:border-4 border-white flex flex-col items-center min-w-[100px]">
-                <span class="text-[8px] md:text-xs landscape:text-[7px] font-bold text-sky-600 uppercase tracking-widest">Level 01</span>
-                <h1 class="text-xs md:text-lg font-black text-blue-900 truncate max-w-[120px]">Vibrant Plains</h1>
-            </div>
-        </header>
+            
+            <button id="btn-fullscreen" class="interactive bg-white/10 hover:bg-white/20 border border-white/30 backdrop-blur text-white px-4 py-2 rounded-xl font-bold transition flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                <span class="hidden md:inline">Fullscreen</span>
+            </button>
+        </div>
 
-        <!-- Game World Area -->
-        <main class="flex-1 relative bg-gradient-to-b from-sky-300 via-sky-200 to-sky-100 overflow-hidden">
-            <div id="phaser-game" class="absolute inset-0 z-10"></div>
-
-            <!-- Overlaid Joystick Controls -->
-            <div id="joystick-base" class="absolute bottom-4 left-1/2 -translate-x-1/2 w-24 h-24 md:w-32 md:h-32 landscape:w-20 landscape:h-20 bg-sky-400/25 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center border-4 border-white/50 touch-none z-30 transition-all">
-                <div id="joystick-stick" class="w-12 h-12 md:w-18 md:h-18 landscape:w-10 landscape:h-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full shadow-2xl border-b-4 md:border-b-8 border-orange-800 flex items-center justify-center pointer-events-none">
-                    <div class="w-4 h-4 md:w-6 md:h-6 landscape:w-2 landscape:h-2 bg-white rounded-full opacity-20"></div>
+        <!-- Touch Controls -->
+        <div id="dpad-container" class="absolute bottom-8 left-0 w-full px-8 flex justify-between z-30 pointer-events-none">
+            <div class="flex gap-4">
+                <div id="btn-left" class="dpad-btn interactive">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </div>
+                <div id="btn-right" class="dpad-btn interactive">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                 </div>
             </div>
-        </main>
+            <div>
+                <div id="btn-up" class="dpad-btn interactive">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Game Over Overlay -->
+        <div id="game-over-screen" class="absolute inset-0 z-40 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center opacity-0 pointer-events-none transition-opacity duration-500">
+            <h1 class="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-br from-red-400 to-red-600 drop-shadow-2xl mb-8 tracking-tighter">GAME OVER</h1>
+            <p class="text-white text-xl animate-pulse">Restarting level...</p>
+        </div>
+        <!-- Victory Overlay -->
+        <div id="victory-screen" class="absolute inset-0 z-40 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center opacity-0 pointer-events-none transition-opacity duration-500">
+            <h1 class="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-br from-yellow-300 to-yellow-600 drop-shadow-2xl mb-8 tracking-tighter">VICTORY</h1>
+            <p class="text-white text-xl animate-pulse">Loading next level...</p>
+        </div>
     </div>
 
     <script>
-        const scoreDisplay = document.getElementById('score-display');
-        const livesDisplay = document.getElementById('lives-display');
+        // Global state
+        window.controls = { left: false, right: false, up: false };
         let currentScore = 0;
+        let currentLevel = 0;
         let lives = 3;
-        let isInvulnerable = false;
-        const controls = { left: false, right: false, jump: false };
-        window.controls = controls;
 
+        // Level Definitions
+        const getLedgeY = (h, i, total) => (h - 40) - (i * (((h - 40) - Math.max(h * 0.25, 100)) / total));
+        
+        const generateLevelLedges = (levelIndex, w, h) => {
+            const ledges = [{ x: w / 2, y: h - 20, w: w, h: 40, isGround: true }];
+            const numLedges = 5;
+            const colors = [0xfb923c, 0xf472b6, 0xc084fc, 0x60a5fa, 0x22c55e, 0xeab308, 0xef4444];
+            
+            for (let i = 1; i <= numLedges; i++) {
+                const y = getLedgeY(h, i, numLedges);
+                const minWidth = Math.max(120, w * 0.225);
+                const maxWidth = Math.max(200 - levelIndex * 5, minWidth + 20);
+                const ledgeW = Phaser.Math.Between(minWidth, maxWidth);
+                
+                let x;
+                if (i % 2 !== 0) {
+                    x = Phaser.Math.Between(ledgeW / 2 + 20, w * 0.45);
+                } else {
+                    x = Phaser.Math.Between(w * 0.55, w - ledgeW / 2 - 20);
+                }
+                x = Phaser.Math.Clamp(x, ledgeW / 2 + 10, w - ledgeW / 2 - 10);
+                
+                const color = colors[(levelIndex + i) % colors.length];
+                ledges.push({ x, y, w: ledgeW, h: 20, color });
+            }
+            return ledges;
+        };
+
+        // Touch Control Setup
+        const setupBtn = (id, key) => {
+            const el = document.getElementById(id);
+            const activate = (e) => { e.preventDefault(); window.controls[key] = true; el.classList.add('active'); };
+            const deactivate = (e) => { e.preventDefault(); window.controls[key] = false; el.classList.remove('active'); };
+            
+            el.addEventListener('touchstart', activate, { passive: false });
+            el.addEventListener('touchend', deactivate, { passive: false });
+            el.addEventListener('mousedown', activate);
+            el.addEventListener('mouseup', deactivate);
+            el.addEventListener('mouseleave', deactivate);
+        };
+        
+        setupBtn('btn-left', 'left');
+        setupBtn('btn-right', 'right');
+        setupBtn('btn-up', 'up');
+
+        // Fullscreen Handling
+        const container = document.getElementById('game-container');
+        const fsBtn = document.getElementById('btn-fullscreen');
+        
+        fsBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                container.requestFullscreen().catch(e => console.warn(e));
+            } else {
+                document.exitFullscreen();
+            }
+        });
+
+        // Ensure focus returns to the window/container so Phaser catches keys
+        document.addEventListener('fullscreenchange', () => {
+            setTimeout(() => {
+                window.focus();
+                container.focus();
+            }, 100);
+        });
+
+        // UI Updaters
+        const updateHUD = () => {
+            document.getElementById('score-display').innerText = currentScore;
+            document.getElementById('lives-display').innerText = lives;
+            document.getElementById('level-display').innerText = currentLevel + 1;
+        };
+
+        const showOverlay = (id, duration = 2000) => {
+            const el = document.getElementById(id);
+            el.classList.remove('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                el.classList.add('opacity-0', 'pointer-events-none');
+            }, duration);
+        };
+
+        // Phaser Game Scene
+        class MainScene extends Phaser.Scene {
+            constructor() {
+                super('MainScene');
+            }
+
+            create() {
+                updateHUD();
+                this.isGameOver = false;
+                this.isInvulnerable = false;
+
+                const { width, height } = this.scale;
+
+                // Background Gradients
+                const bgColors = [0x0f172a, 0x1e3a8a, 0x450a0a, 0x172554, 0x2e1065];
+                const bgColor = bgColors[currentLevel % bgColors.length];
+                this.add.rectangle(width/2, height/2, width, height, bgColor);
+
+                const ledges = generateLevelLedges(currentLevel, width, height);
+
+                // Platforms
+                this.platforms = this.physics.add.staticGroup();
+                ledges.forEach(l => {
+                    const rect = this.add.rectangle(l.x, l.y, l.w, l.h, l.color || 0x22c55e);
+                    this.physics.add.existing(rect, true);
+                    this.platforms.add(rect);
+                    // Ledge shadow for depth
+                    if (!l.isGround) {
+                        this.add.rectangle(l.x, l.y + l.h/2 - 2, l.w, 4, 0x000000, 0.2);
+                    }
+                });
+
+                // Player Character Design
+                const pBody = this.add.rectangle(0, 0, 40, 40, 0x3b82f6).setStrokeStyle(3, 0x1d4ed8);
+                const pEyeL = this.add.rectangle(-8, -5, 6, 12, 0xffffff).setStrokeStyle(1, 0x000000);
+                const pEyeR = this.add.rectangle(8, -5, 6, 12, 0xffffff).setStrokeStyle(1, 0x000000);
+                const pPupL = this.add.rectangle(-8, -3, 4, 6, 0x000000);
+                const pPupR = this.add.rectangle(8, -3, 4, 6, 0x000000);
+                const pBlushL = this.add.rectangle(-12, 5, 8, 4, 0xf472b6, 0.6);
+                const pBlushR = this.add.rectangle(12, 5, 8, 4, 0xf472b6, 0.6);
+
+                this.player = this.add.container(Math.min(100, width * 0.1), height - 100, 
+                    [pBody, pEyeL, pEyeR, pPupL, pPupR, pBlushL, pBlushR]);
+                this.physics.add.existing(this.player);
+                this.player.body.setBounce(0.1).setCollideWorldBounds(true).setSize(40, 40).setOffset(-20, -20);
+                
+                this.physics.add.collider(this.player, this.platforms);
+
+                // Keyboard Input - Target Window ensures it works in fullscreen
+                this.cursors = this.input.keyboard.createCursorKeys();
+                this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE');
+
+                // Stars
+                this.stars = this.physics.add.group();
+                ledges.forEach(l => {
+                    if (l.isGround) return;
+                    for (let i = 0; i < 4; i++) {
+                        const starX = l.x - (l.w * 3 / 8) + (i * l.w / 4);
+                        const star = this.add.star(starX, l.y - 30, 5, 6, 12, 0xfbbf24).setStrokeStyle(1, 0xb45309);
+                        this.physics.add.existing(star);
+                        star.body.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8)).setCollideWorldBounds(true);
+                        this.stars.add(star);
+                    }
+                });
+                this.physics.add.collider(this.stars, this.platforms);
+
+                this.physics.add.overlap(this.player, this.stars, (p, s) => {
+                    if (s.getData('collected')) return;
+                    s.setData('collected', true);
+                    
+                    // Pop animation
+                    this.tweens.add({
+                        targets: s,
+                        scale: 2, alpha: 0, duration: 200,
+                        onComplete: () => s.destroy()
+                    });
+
+                    currentScore += 10;
+                    updateHUD();
+
+                    if (this.stars.children.entries.filter(star => !star.getData('collected')).length === 0) {
+                        this.isGameOver = true;
+                        this.physics.pause();
+                        showOverlay('victory-screen', 1500);
+                        setTimeout(() => {
+                            currentLevel++;
+                            this.scene.restart();
+                        }, 1500);
+                    }
+                });
+
+                // Monsters
+                this.monsters = this.physics.add.group();
+                ledges.forEach(l => {
+                    const type = Phaser.Math.Between(0, 4);
+                    let mBody;
+                    if (type === 0) mBody = this.add.rectangle(0, 0, 48, 48, 0xef4444).setStrokeStyle(4, 0x991b1b);
+                    else if (type === 1) mBody = this.add.circle(0, 0, 24, 0x22c55e).setStrokeStyle(4, 0x14532d);
+                    else if (type === 2) mBody = this.add.triangle(0, 0, 0, 48, 24, 0, 48, 48, 0x3b82f6).setStrokeStyle(4, 0x1e3a8a);
+                    else if (type === 3) mBody = this.add.rectangle(0, 0, 34, 34, 0xeab308).setStrokeStyle(4, 0x713f12).setAngle(45);
+                    else mBody = this.add.ellipse(0, 0, 48, 38, 0xa855f7).setStrokeStyle(4, 0x4c1d95);
+
+                    const mEyeL = this.add.rectangle(-9, -6, 9, 12, 0xffffff);
+                    const mEyeR = this.add.rectangle(9, -6, 9, 12, 0xffffff);
+                    const mPupL = this.add.rectangle(-9, -6, 4, 6, 0x000000);
+                    const mPupR = this.add.rectangle(9, -6, 4, 6, 0x000000);
+
+                    const spawnX = l.isGround ? Phaser.Math.Between(200, width - 100) : l.x;
+                    const monster = this.add.container(spawnX, l.y - l.h/2 - 24, [mBody, mEyeL, mEyeR, mPupL, mPupR]);
+                    this.physics.add.existing(monster);
+                    monster.body.setBounce(0).setCollideWorldBounds(true).setSize(48, 48).setOffset(-24, -24);
+                    monster.body.setVelocityX(Phaser.Math.Between(80, 120) * (Math.random() > 0.5 ? 1 : -1));
+                    
+                    monster.setData('minX', l.x - l.w/2 + 24);
+                    monster.setData('maxX', l.x + l.w/2 - 24);
+                    this.monsters.add(monster);
+                });
+                this.physics.add.collider(this.monsters, this.platforms);
+
+                this.physics.add.overlap(this.player, this.monsters, () => {
+                    if (this.isInvulnerable || this.isGameOver) return;
+
+                    lives--;
+                    updateHUD();
+
+                    if (lives <= 0) {
+                        this.isGameOver = true;
+                        this.physics.pause();
+                        showOverlay('game-over-screen', 2000);
+                        setTimeout(() => {
+                            lives = 3;
+                            currentScore = 0;
+                            currentLevel = 0;
+                            this.scene.restart();
+                        }, 2000);
+                    } else {
+                        this.isInvulnerable = true;
+                        this.player.body.setVelocity(0, 0);
+                        this.player.setPosition(Math.min(100, width * 0.1), height - 100);
+                        
+                        this.tweens.add({
+                            targets: this.player,
+                            alpha: 0.2, duration: 100, yoyo: true, repeat: 10,
+                            onComplete: () => {
+                                this.player.alpha = 1;
+                                this.isInvulnerable = false;
+                            }
+                        });
+                    }
+                });
+            }
+
+            update() {
+                if (this.isGameOver || !this.player) return;
+
+                // Combine keyboard and HTML touch controls
+                const leftKey = this.cursors.left.isDown || this.keys.A.isDown;
+                const rightKey = this.cursors.right.isDown || this.keys.D.isDown;
+                const upKey = this.cursors.up.isDown || this.keys.W.isDown || this.keys.SPACE.isDown;
+
+                const left = leftKey || window.controls.left;
+                const right = rightKey || window.controls.right;
+                const up = upKey || window.controls.up;
+
+                if (left) {
+                    this.player.body.setVelocityX(-250);
+                } else if (right) {
+                    this.player.body.setVelocityX(250);
+                } else {
+                    this.player.body.setVelocityX(0);
+                }
+
+                if (up && this.player.body.touching.down) {
+                    this.player.body.setVelocityY(-660);
+                }
+
+                // Monster patrol logic
+                this.monsters.children.iterate(m => {
+                    if (!m || !m.body) return true;
+                    if (m.body.velocity.x === 0) {
+                        m.body.setVelocityX(100 * (Math.random() > 0.5 ? 1 : -1));
+                    }
+                    if (m.x <= m.getData('minX')) m.body.setVelocityX(Math.abs(m.body.velocity.x) || 100);
+                    if (m.x >= m.getData('maxX')) m.body.setVelocityX(-Math.abs(m.body.velocity.x) || -100);
+                    return true;
+                });
+            }
+        }
+
+        // Phaser Configuration
         const config = {
             type: Phaser.AUTO,
             parent: 'phaser-game',
-            transparent: true,
             scale: {
                 mode: Phaser.Scale.RESIZE,
+                width: '100%',
+                height: '100%',
                 autoCenter: Phaser.Scale.CENTER_BOTH
             },
             physics: {
                 default: 'arcade',
-                arcade: { gravity: { y: 600 }, debug: false }
-            },
-            scene: { preload, create, update }
-        };
-
-        const game = new Phaser.Game(config);
-        window.game = game;
-        let player, platforms, cursors, stars, monsters, gameOver = false;
-
-        function preload() {}
-
-        function create() {
-            gameOver = false;
-            currentScore = 0;
-            scoreDisplay.innerText = '0';
-            lives = 3;
-            livesDisplay.innerText = '×3';
-            isInvulnerable = false;
-
-            const { width, height } = this.scale;
-
-            platforms = this.physics.add.staticGroup();
-            
-            // Ground
-            const ground = this.add.rectangle(width / 2, height - 20, width, 40, 0x22c55e);
-            this.physics.add.existing(ground, true);
-            platforms.add(ground);
-            this.add.rectangle(width / 2, height - 38, width, 4, 0x16a34a);
-
-            // Dynamic Ledges
-            const ledges = [
-                { x: width / 2, y: height - 40, w: width, h: 40, isGround: true },
-                { x: width * 0.75, y: height - 150, w: Math.max(200, width * 0.3), h: 20, color: 0xfb923c },
-                { x: width * 0.25, y: height - 250, w: Math.max(180, width * 0.25), h: 20, color: 0xf472b6 },
-                { x: width * 0.8, y: height - 340, w: Math.max(150, width * 0.2), h: 20, color: 0xc084fc },
-                { x: width * 0.45, y: height - 370, w: Math.max(120, width * 0.15), h: 20, color: 0x60a5fa }
-            ];
-
-            ledges.filter(l => !l.isGround).forEach(l => {
-                const ledge = this.add.rectangle(l.x, l.y, l.w, l.h, l.color);
-                this.physics.add.existing(ledge, true);
-                platforms.add(ledge);
-                this.add.rectangle(l.x, l.y + 5, l.w, 4, 0x000000, 0.1);
-            });
-
-            // Player Setup
-            const playerBodyVisual = this.add.rectangle(0, 0, 40, 40, 0xfacc15).setStrokeStyle(4, 0x1e3a8a);
-            const eyeLeft = this.add.circle(-8, -5, 4, 0x1e3a8a);
-            const eyeRight = this.add.circle(8, -5, 4, 0x1e3a8a);
-            const blushLeft = this.add.circle(-12, 5, 3, 0xf472b6, 0.6);
-            const blushRight = this.add.circle(12, 5, 3, 0xf472b6, 0.6);
-            
-            player = this.add.container(Math.min(100, width * 0.1), height - 70, [playerBodyVisual, eyeLeft, eyeRight, blushLeft, blushRight]);
-            this.physics.add.existing(player);
-            player.body.setBounce(0.1).setCollideWorldBounds(true).setSize(40, 40).setOffset(-20, -20);
-
-            // Monsters Setup
-            monsters = this.physics.add.group();
-            ledges.forEach((l, index) => {
-                const mBodyVisual = this.add.rectangle(0, 0, 30, 30, 0xef4444).setStrokeStyle(3, 0x7f1d1d);
-                const eyeL = this.add.rectangle(-6, -4, 6, 8, 0xffffff);
-                const eyeR = this.add.rectangle(6, -4, 6, 8, 0xffffff);
-                const pupilL = this.add.rectangle(-6, -2, 3, 3, 0x000000);
-                const pupilR = this.add.rectangle(6, -2, 3, 3, 0x000000);
-                
-                const platformTop = l.y - (l.h / 2);
-                const monster = this.add.container(l.x, platformTop - 15, [mBodyVisual, eyeL, eyeR, pupilL, pupilR]);
-                this.physics.add.existing(monster);
-                monster.body.setBounce(0).setCollideWorldBounds(true).setSize(30, 30).setOffset(-15, -15).setVelocityX(index % 2 === 0 ? 120 : -120);
-                
-                monster.setData('minX', l.x - l.w / 2 + 15);
-                monster.setData('maxX', l.x + l.w / 2 - 15);
-                monsters.add(monster);
-            });
-
-            cursors = this.input.keyboard.createCursorKeys();
-
-            // Stars Setup
-            stars = this.physics.add.group();
-            const starCount = 10;
-            const spacing = width / (starCount + 1);
-            for (let i = 0; i < starCount; i++) {
-                const star = this.add.star(spacing * (i + 1), 0, 5, 8, 16, 0xfde047).setStrokeStyle(2, 0xeab308);
-                this.physics.add.existing(star);
-                star.body.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8)).setCollideWorldBounds(true);
-                stars.add(star);
-            }
-
-            // Physics Colliders
-            this.physics.add.collider(player, platforms);
-            this.physics.add.collider(stars, platforms);
-            this.physics.add.collider(monsters, platforms);
-
-            this.physics.add.overlap(player, stars, (p, s) => {
-                if (s.getData('collecting')) return;
-                s.setData('collecting', true);
-                this.tweens.add({
-                    targets: s, scale: 0, alpha: 0, duration: 200,
-                    onComplete: () => {
-                        s.destroy();
-                        currentScore += 10;
-                        scoreDisplay.innerText = currentScore;
-                        if (stars.countActive(true) === 0) endGame.call(this, 'YOU WIN!');
-                    }
-                });
-            });
-
-            this.physics.add.overlap(player, monsters, () => {
-                if (isInvulnerable || gameOver) return;
-
-                lives--;
-                livesDisplay.innerText = '×' + lives;
-
-                if (lives <= 0) {
-                    endGame.call(this, 'GAME OVER');
-                } else {
-                    isInvulnerable = true;
-                    player.body.setVelocity(0, 0);
-                    player.setPosition(Math.min(100, width * 0.1), height - 70);
-
-                    this.tweens.add({
-                        targets: player,
-                        alpha: 0.2,
-                        duration: 100,
-                        yoyo: true,
-                        repeat: 9,
-                        onComplete: () => {
-                            player.alpha = 1;
-                            isInvulnerable = false;
-                        }
-                    });
+                arcade: {
+                    gravity: { y: 1200 },
+                    debug: false
                 }
-            });
-        }
-
-        function endGame(message) {
-            gameOver = true;
-            this.physics.pause();
-            const { width, height } = this.scale;
-
-            this.add.text(width / 2, height / 2 - 30, message, { fontSize: '64px', color: '#1e3a8a', fontStyle: '900' }).setOrigin(0.5);
-            this.add.text(width / 2, height / 2 + 30, 'Click to Restart', { fontSize: '24px', color: '#1e3a8a', fontStyle: 'bold' }).setOrigin(0.5);
-            this.input.once('pointerdown', () => this.scene.restart());
-        }
-
-        function update() {
-            if (gameOver || !player) return;
-
-            if (monsters) {
-                monsters.children.iterate(m => {
-                    if (!m.body) return true;
-                    const { body } = m;
-                    const minX = m.getData('minX');
-                    const maxX = m.getData('maxX');
-
-                    if (m.x <= minX) {
-                        body.setVelocityX(Math.abs(body.velocity.x) || 120);
-                    } else if (m.x >= maxX) {
-                        body.setVelocityX(-Math.abs(body.velocity.x) || -120);
-                    }
-                    if (Math.abs(body.velocity.x) < 10) {
-                        body.setVelocityX(m.x < (minX + maxX) / 2 ? 120 : -120);
-                    }
-                    return true;
-                });
+            },
+            scene: MainScene,
+            input: {
+                keyboard: {
+                    target: window // Crucial for retaining keyboard focus in fullscreen
+                }
             }
-
-            const { body } = player;
-            const spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-            const isLeft = cursors.left.isDown || controls.left;
-            const isRight = cursors.right.isDown || controls.right;
-            const isJump = cursors.up.isDown || spaceKey.isDown || controls.jump;
-
-            if (isLeft) {
-                body.setVelocityX(-200);
-            } else if (isRight) {
-                body.setVelocityX(200);
-            } else {
-                body.setVelocityX(0);
-            }
-
-            if (isJump && body.touching.down) {
-                body.setVelocityY(-520);
-            }
-        }
-
-        // Joystick Event Listeners
-        const joyBase = document.getElementById('joystick-base');
-        const joyStick = document.getElementById('joystick-stick');
-        let isDragging = false;
-
-        const handleMove = (e) => {
-            if (!isDragging) return;
-            const touch = e.touches ? e.touches[0] : e;
-            const rect = joyBase.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            const stickMax = rect.width * 0.45;
-            
-            let dx = touch.clientX - centerX;
-            let dy = touch.clientY - centerY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            
-            if (dist > stickMax) {
-                dx *= stickMax / dist;
-                dy *= stickMax / dist;
-            }
-            
-            joyStick.style.transform = `translate(${dx}px, ${dy}px)`;
-            
-            controls.left = dx < -stickMax * 0.3;
-            controls.right = dx > stickMax * 0.3;
-            controls.jump = dy < -stickMax * 0.5;
         };
 
-        const stopDragging = () => {
-            isDragging = false;
-            joyStick.style.transform = 'translate(0, 0)';
-            controls.left = controls.right = controls.jump = false;
-        };
+        window.game = new Phaser.Game(config);
 
-        joyBase.addEventListener('mousedown', (e) => { isDragging = true; handleMove(e); });
-        window.addEventListener('mousemove', handleMove);
-        window.addEventListener('mouseup', stopDragging);
-
-        joyBase.addEventListener('touchstart', (e) => { e.preventDefault(); isDragging = true; handleMove(e); }, { passive: false });
-        window.addEventListener('touchmove', (e) => { if (isDragging) e.preventDefault(); handleMove(e); }, { passive: false });
-        window.addEventListener('touchend', stopDragging);
+        // Keep resizing smooth and focus intact
+        window.addEventListener('resize', () => {
+            clearTimeout(window.resizeTimeout);
+            window.resizeTimeout = setTimeout(() => {
+                if (window.game) {
+                    window.game.scale.resize(window.innerWidth, window.innerHeight);
+                    const scene = window.game.scene.getScene('MainScene');
+                    if (scene && scene.scene.isActive()) {
+                        scene.scene.restart();
+                    }
+                }
+            }, 200);
+        });
+        
+        window.focus();
     </script>
 </body>
 </html>

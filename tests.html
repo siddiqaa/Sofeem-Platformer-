@@ -77,9 +77,9 @@
                     <span>Game Mechanics</span>
                     <span class="px-2 py-0.5 bg-slate-950 rounded-full text-[10px]" id="badge-mechanics">0</span>
                 </button>
-                <button class="category-btn p-3 rounded-xl hover:bg-slate-800/50 text-left text-slate-400 hover:text-slate-200 text-xs font-bold transition-all border border-transparent flex justify-between items-center group" data-category="joystick">
-                    <span>Joystick Physics</span>
-                    <span class="px-2 py-0.5 bg-slate-950 rounded-full text-[10px]" id="badge-joystick">0</span>
+                <button class="category-btn p-3 rounded-xl hover:bg-slate-800/50 text-left text-slate-400 hover:text-slate-200 text-xs font-bold transition-all border border-transparent flex justify-between items-center group" data-category="dpad">
+                    <span>D-Pad Controls</span>
+                    <span class="px-2 py-0.5 bg-slate-950 rounded-full text-[10px]" id="badge-dpad">0</span>
                 </button>
             </aside>
 
@@ -140,8 +140,14 @@
         addTest('Verify HUD Displays Exist', 'dom', async (sandboxWindow, logger) => {
             const score = sandboxWindow.document.getElementById('score-display');
             const lives = sandboxWindow.document.getElementById('lives-display');
+            const level = sandboxWindow.document.getElementById('level-display');
+            const maxLevel = sandboxWindow.document.getElementById('max-level-display');
+            
             if (!score) throw new Error('HUD elements: #score-display is missing.');
             if (!lives) throw new Error('HUD elements: #lives-display is missing.');
+            if (!level) throw new Error('HUD elements: #level-display is missing.');
+            if (maxLevel) throw new Error('HUD elements: #max-level-display should be removed.');
+            
             logger(`Successfully verified HUD displays. Current score on screen: "${score.innerText}".`);
         });
 
@@ -150,60 +156,22 @@
             if (!gameDiv) throw new Error('#phaser-game wrapper element does not exist.');
             logger('Verified #phaser-game division exists.');
             
-            const classes = gameDiv.className;
-            if (!classes.includes('absolute') || !classes.includes('inset-0')) {
-                throw new Error('#phaser-game is not configured for absolute inset-0 to support full-width.');
+            const style = sandboxWindow.getComputedStyle(gameDiv);
+            if (style.position !== 'absolute') {
+                throw new Error('#phaser-game is not configured for absolute positioning to support full-width.');
             }
             logger('Validated full-width layout canvas bounds.');
         });
 
         addTest('Verify Overlay Controls Layout', 'dom', async (sandboxWindow, logger) => {
-            const joystick = sandboxWindow.document.getElementById('joystick-base');
-            const stick = sandboxWindow.document.getElementById('joystick-stick');
-            if (!joystick) throw new Error('#joystick-base is missing from screen overlay.');
-            if (!stick) throw new Error('#joystick-stick is missing from the joystick base.');
+            const dpad = sandboxWindow.document.getElementById('dpad-container');
+            if (!dpad) throw new Error('#dpad-container is missing from screen overlay.');
             
-            const positionClasses = joystick.className;
-            if (!positionClasses.includes('absolute') || !positionClasses.includes('bottom-4') || !positionClasses.includes('left-1/2')) {
-                throw new Error('Joystick position is not configured appropriately at the bottom-center of the screen.');
+            const positionClasses = dpad.className;
+            if (!positionClasses.includes('absolute') || !positionClasses.includes('bottom-8') || !positionClasses.includes('w-full')) {
+                throw new Error('D-Pad position is not configured appropriately.');
             }
-            logger('Verified that joystick is overlayed nicely and centered (absolute, bottom-4, left-1/2, -translate-x-1/2).');
-        });
-
-        addTest('Verify Landscape Mobile Responsive Scaling', 'dom', async (sandboxWindow, logger) => {
-            const iframe = document.getElementById('game-sandbox');
-            const joystick = sandboxWindow.document.getElementById('joystick-base');
-            if (!joystick) throw new Error('#joystick-base element is missing.');
-
-            logger('Simulating mobile landscape view by resizing sandbox to 640x320...');
-            iframe.style.width = '640px';
-            iframe.style.height = '320px';
-            
-            // Dispatch resize events so Tailwind media queries and Phaser re-render
-            sandboxWindow.dispatchEvent(new Event('resize'));
-            
-            // Wait for styles and browser layouts to settle
-            await new Promise(resolve => setTimeout(resolve, 300));
-
-            const computedStyle = sandboxWindow.getComputedStyle(joystick);
-            const heightPx = parseFloat(computedStyle.height);
-            const widthPx = parseFloat(computedStyle.width);
-
-            logger(`Simulated viewport dimensions: 640x320. Joystick element dimensions: ${widthPx}px x ${heightPx}px.`);
-
-            // landscape:w-20 is 5rem (80px)
-            if (widthPx > 100) {
-                throw new Error(`Landscape scaling failed: expected joystick to scale down under landscape mode (got ${widthPx}px width).`);
-            }
-            
-            logger('Successfully verified that joystick scales down correctly on landscape mobile orientations (using landscape:w-20 rule).');
-
-            // Restore defaults
-            logger('Restoring default sandbox dimensions to 1024x768...');
-            iframe.style.width = '1024px';
-            iframe.style.height = '768px';
-            sandboxWindow.dispatchEvent(new Event('resize'));
-            await new Promise(resolve => setTimeout(resolve, 200));
+            logger('Verified that D-Pad is overlayed nicely.');
         });
 
         // Suite 2: Game Mechanics and State initialization
@@ -224,80 +192,74 @@
             if (!controls) {
                 throw new Error('The game "controls" state object is not defined.');
             }
-            if (controls.left !== false || controls.right !== false || controls.jump !== false) {
+            if (controls.left !== false || controls.right !== false || controls.up !== false) {
                 throw new Error('Controls state should be initialized to false on startup.');
             }
             logger('Verified controls interface is active and initialized to: ' + JSON.stringify(controls));
         });
 
-        addTest('Verify HUD Score Synchronization', 'mechanics', async (sandboxWindow, logger) => {
+        addTest('Verify HUD Score and Level Synchronization', 'mechanics', async (sandboxWindow, logger) => {
             const initialScoreText = sandboxWindow.document.getElementById('score-display').innerText;
             if (initialScoreText !== '0' && isNaN(parseInt(initialScoreText))) {
                 throw new Error(`Expected score display to initialize at 0, found "${initialScoreText}"`);
             }
-            logger(`Validated current score interface is correctly initialized.`);
+            const initialLevelText = sandboxWindow.document.getElementById('level-display').innerText;
+            if (initialLevelText !== '1') {
+                throw new Error(`Expected level display to initialize at 1, found "${initialLevelText}"`);
+            }
+            logger(`Validated current score and level interface is correctly initialized.`);
         });
 
-        // Suite 3: Joystick Math Calculations
-        addTest('Verify Joystick Drag and Constraint Mathematics', 'joystick', async (sandboxWindow, logger) => {
-            // Test vectors simulating joystick physics formulas
-            const simulateJoystickPhysics = (dx, dy, baseWidth) => {
-                const stickMax = baseWidth * 0.45;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                let rx = dx;
-                let ry = dy;
-                if (dist > stickMax) {
-                    rx *= stickMax / dist;
-                    ry *= stickMax / dist;
-                }
-                
-                // Assert controls
-                const left = rx < -stickMax * 0.3;
-                const right = rx > stickMax * 0.3;
-                const jump = ry < -stickMax * 0.5;
-                
-                return { rx, ry, left, right, jump, stickMax };
-            };
-
-            const baseWidth = 100; // Simulated joystick size: 100px width
+        addTest('Verify Player Physics Configuration', 'mechanics', async (sandboxWindow, logger) => {
+            const game = sandboxWindow.game;
+            if (!game || !game.scene || !game.scene.scenes || game.scene.scenes.length === 0) {
+                throw new Error('Phaser game instance missing or scenes not initialized.');
+            }
+            const scene = game.scene.scenes[0];
+            if (!scene || !scene.player || !scene.player.body) throw new Error('Player physics body not found.');
             
-            // 1. Center dragging (no threshold)
-            let result = simulateJoystickPhysics(10, 5, baseWidth);
-            if (result.left || result.right || result.jump) {
-                throw new Error('Small drag within threshold triggers controls incorrectly.');
-            }
-            logger('Verified that small movements inside the threshold center area do not trigger active control states.');
+            const body = scene.player.body;
+            if (body.width !== 40 || body.height !== 40) throw new Error(`Player size is incorrect: ${body.width}x${body.height}`);
+            if (body.offset.x !== -20 || body.offset.y !== -20) throw new Error('Player offset is incorrect.');
+            logger('Verified player size, offset, and physics properties.');
+        });
 
-            // 2. Dragging Left past threshold
-            result = simulateJoystickPhysics(-25, 5, baseWidth);
-            if (!result.left || result.right) {
-                throw new Error('Expected "left" to be active and "right" to be inactive when dragging left.');
-            }
-            logger('Verified Drag-Left detection correctly activates "left" controls.');
+        addTest('Verify Level Stars Generation', 'mechanics', async (sandboxWindow, logger) => {
+            const game = sandboxWindow.game;
+            const scene = game.scene.scenes[0];
+            if (!scene.stars) throw new Error('Stars group missing.');
+            const numStars = scene.stars.countActive(true);
+            if (numStars <= 0) throw new Error('No stars generated.');
+            logger(`Verified ${numStars} stars are generated across ledges.`);
+        });
 
-            // 3. Dragging Right past threshold
-            result = simulateJoystickPhysics(30, -5, baseWidth);
-            if (result.left || !result.right) {
-                throw new Error('Expected "right" to be active and "left" to be inactive when dragging right.');
-            }
-            logger('Verified Drag-Right detection correctly activates "right" controls.');
+        addTest('Verify Monsters Generation', 'mechanics', async (sandboxWindow, logger) => {
+            const game = sandboxWindow.game;
+            const scene = game.scene.scenes[0];
+            if (!scene.monsters) throw new Error('Monsters group missing.');
+            logger(`Verified monsters group exists with ${scene.monsters.countActive(true)} active monsters.`);
+        });
 
-            // 4. Dragging Up past threshold (Jump)
-            result = simulateJoystickPhysics(0, -40, baseWidth);
-            if (!result.jump) {
-                throw new Error('Expected "jump" to be active when dragging up past the threshold.');
-            }
-            logger('Verified Drag-Up detection correctly triggers "jump" controls.');
+        addTest('Verify Ledge Generation', 'mechanics', async (sandboxWindow, logger) => {
+            const game = sandboxWindow.game;
+            const scene = game.scene.scenes[0];
+            if (!scene.platforms) throw new Error('Platforms static group missing.');
+            // There are 6 ledges (1 ground + 5 ledges), and some ledges might be composed of 1 platform.
+            const numPlatforms = scene.platforms.countActive(true);
+            if (numPlatforms < 5) throw new Error(`Expected at least 5 platforms, found ${numPlatforms}.`);
+            logger(`Verified ${numPlatforms} platforms were generated successfully.`);
+        });
 
-            // 5. Hard boundary scaling check
-            const overflowDrag = simulateJoystickPhysics(150, 150, baseWidth);
-            const expectedMax = baseWidth * 0.45;
-            const absoluteDist = Math.sqrt(overflowDrag.rx * overflowDrag.rx + overflowDrag.ry * overflowDrag.ry);
+        // Suite 3: D-Pad Interactions
+        addTest('Verify D-Pad Button Registration', 'dpad', async (sandboxWindow, logger) => {
+            const btnLeft = sandboxWindow.document.getElementById('btn-left');
+            const btnRight = sandboxWindow.document.getElementById('btn-right');
+            const btnUp = sandboxWindow.document.getElementById('btn-up');
             
-            if (Math.abs(absoluteDist - expectedMax) > 0.1) {
-                throw new Error(`Distance clamping failed. Expected: ${expectedMax}, Actual: ${absoluteDist}`);
+            if (!btnLeft || !btnRight || !btnUp) {
+                throw new Error('Missing D-Pad buttons.');
             }
-            logger(`Verified hard boundary constraint scaling. Position clamped cleanly inside ${expectedMax}px max radius.`);
+            logger('Verified D-Pad buttons exist.');
         });
 
         // --- RUNNER INTERACTIVE SCRIPT ---
@@ -318,14 +280,14 @@
         const badgeAll = document.getElementById('badge-all');
         const badgeDom = document.getElementById('badge-dom');
         const badgeMechanics = document.getElementById('badge-mechanics');
-        const badgeJoystick = document.getElementById('badge-joystick');
+        const badgeDpad = document.getElementById('badge-dpad');
 
         // Update categories counters
         function updateCounters() {
             badgeAll.innerText = tests.length;
             badgeDom.innerText = tests.filter(t => t.category === 'dom').length;
             badgeMechanics.innerText = tests.filter(t => t.category === 'mechanics').length;
-            badgeJoystick.innerText = tests.filter(t => t.category === 'joystick').length;
+            badgeDpad.innerText = tests.filter(t => t.category === 'dpad').length;
         }
 
         updateCounters();
